@@ -4,6 +4,7 @@ Meant to be used with github workflows
 """
 
 import os
+import re
 import json
 import logging
 from pathlib import Path
@@ -29,6 +30,9 @@ INDEX_FOLDER = Path(__file__).parent
 INDEX_FILE = INDEX_FOLDER / "index.json"
 INTEGRATION_INDEX_FOLDER = INDEX_FOLDER / "integrations"
 PLATFORM_INDEX_FOLDER = INDEX_FOLDER / "platforms"
+
+DEV_PATTERN = r"([0-9.]+)_dev.zip"
+MAIN_PATTERN = r"([0-9.]+).zip"
 
 if not INTEGRATION_INDEX_FOLDER.exists(): INTEGRATION_INDEX_FOLDER.mkdir()
 if not PLATFORM_INDEX_FOLDER.exists(): PLATFORM_INDEX_FOLDER.mkdir()
@@ -69,27 +73,31 @@ def create_integration_index(dev_mode: bool):
         if not manifest_file.exists():
             continue
 
-        if dev_mode:
-            key = "dev"
-            package_name = INTEGRATION_INDEX_FOLDER / f"{p.name}_dev.zip"
-        else:
-            key = "main"
-            package_name = INTEGRATION_INDEX_FOLDER / f"{p.name}.zip"
-
+        key = "dev" if dev_mode else "main"
         with open(manifest_file) as file:
             d = manifestjson(**json.load(file))
-        
+
         if p.name in integration_index:
             integration_index[p.name][key] = d["version"]
-            
         else:
             integration_index[p.name] = {key: d["version"]}
 
-        if (not (package_name).exists()
-                or p.name not in current_index["integrations"]
-                or parse_version(d["version"]) > parse_version(current_index["integrations"][p.name].get(key, "0.0.0"))):
+        if dev_mode:
+            package_name = INTEGRATION_INDEX_FOLDER / f"{p.name}{d['version']}_dev.zip"
+            pattern = p.name + DEV_PATTERN
+        else:
+            package_name = INTEGRATION_INDEX_FOLDER / f"{p.name}{d['version']}.zip"
+            pattern = p.name + DEV_PATTERN
+        
+        pattern = re.compile(pattern)
+
+        if not (package_name).exists():
             create_integration_zip(p, package_name)
-            # pass
+            
+            for file in INTEGRATION_INDEX_FOLDER.glob(f"*.zip"):
+                if pattern.match(file.name) and file.name != package_name.name:
+                    print(f"Removing outdated integration package {file.name}")
+                    os.remove(file)
     return integration_index
 
 def create_platform_index(dev_mode: bool):
@@ -100,22 +108,33 @@ def create_platform_index(dev_mode: bool):
         if not platform_file.exists():
             continue
 
-        if dev_mode:
-            key = "dev"
-            package_name = PLATFORM_INDEX_FOLDER / f"{p.name}_dev.zip"
-        else:
-            key = "main"
-            package_name = PLATFORM_INDEX_FOLDER / f"{p.name}.zip"
-
+        key = "dev" if dev_mode else "main"
 
         with open(platform_file) as file:
             d = platformjson(**json.load(file))
-            platform_index[p.name] = d["version"]
+
+        if p.name in platform_index:
+            platform_index[p.name][key] = d["version"]
+        else:
+            platform_index[p.name] = {key: d["version"]}
+
+        if dev_mode:
+            package_name = PLATFORM_INDEX_FOLDER / f"{p.name}{d['version']}_dev.zip"
+            pattern = p.name + DEV_PATTERN
+        else:
+            package_name = PLATFORM_INDEX_FOLDER / f"{p.name}{d['version']}.zip"
+            pattern = p.name + MAIN_PATTERN
         
-        if (not (package_name).exists()
-                or p.name not in current_index["platforms"]
-                or parse_version(d["version"]) > parse_version(current_index["platforms"][p.name].get(key, "0.0.0"))):
+        pattern = re.compile(pattern)
+        
+        if not (package_name).exists():
             create_platform_zip(p, package_name)
+
+            for file in PLATFORM_INDEX_FOLDER.glob(f"*.zip"):
+                if pattern.match(file.name) and file.name != package_name.name:
+                    print(f"Removing outdated platform package {file.name}")
+                    os.remove(file)
+
     return platform_index
 
 ##for the zips, would they only be for inkBoard, and not the designer?
