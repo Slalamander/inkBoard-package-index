@@ -20,6 +20,8 @@ from inkBoard.packaging import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL, parse_ver
 import inkBoarddesigner
 import PythonScreenStackManager
 
+print("Successfully imported everything")
+
 _LOGGER = inkBoard.getLogger("inkBoard-index")
 _LOGGER.setLevel(logging.INFO)
 
@@ -199,6 +201,9 @@ def create_platform_zip(platform_folder: Path, zip_file_path: Path):
     return
 
 if __name__ == "__main__":
+    
+    print("indexer running")
+
     args = parse_arguments()
     index = {
         "inkBoard": inkBoard.__version__,
