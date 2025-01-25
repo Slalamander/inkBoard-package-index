@@ -54,8 +54,6 @@ jobs:
         - name: update file and push to remote
           run: |
               echo "Pushing index updates"
-    
-              cd ./index
 
               git config --global user.name "github-actions[bot]"
               git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
