@@ -40,10 +40,10 @@ jobs:
         - name: Install editable inkBoard packages
           run: python3 -m pip install -e './designer' './inkBoard' './pssm' 
         - name: Generate dev index file
-          run: python "index/inkBoard_indexer.py" --dev
+          run: python -m index/inkBoard_indexer.py --dev
           if: env.branchtype == 'dev'
         - name: Generate main index file
-          run: python "index/inkBoard_indexer.py"
+          run: python -m index/inkBoard_indexer.py
           if: env.branchtype != 'dev'
         - name: Store the index file
           id: storedist
