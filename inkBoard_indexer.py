@@ -163,7 +163,7 @@ def create_integration_zip(integration_folder: Path, zip_file_path: Path):
             ignore=lambda *args: ("__pycache__","emulator.json", "designer", "designer.py")
         )
 
-        print(f"Zipping up integration {name}")
+        print(f"Zipping up integration {name} to {zip_file_path}")
         with zipfile.ZipFile(zip_file_path, 'w', ZIP_COMPRESSION, compresslevel=ZIP_COMPRESSION_LEVEL) as zip_file:
             for foldername, subfolders, filenames in os.walk(tempdir):
                 _LOGGER.verbose(f"Zipping contents of folder {foldername}")
@@ -187,7 +187,7 @@ def create_platform_zip(platform_folder: Path, zip_file_path: Path):
             ignore=lambda *args: ("__pycache__","designer.py", "designer")
         )
 
-        print(f"Zipping up platform {name}")
+        print(f"Zipping up platform {name} to {zip_file_path}")
         with zipfile.ZipFile(zip_file_path, 'w', ZIP_COMPRESSION, compresslevel=ZIP_COMPRESSION_LEVEL) as zip_file:
             for foldername, subfolders, filenames in os.walk(tempdir):
                 _LOGGER.verbose(f"Zipping contents of folder {foldername}")
