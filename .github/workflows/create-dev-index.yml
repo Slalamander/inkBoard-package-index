@@ -51,24 +51,9 @@ jobs:
           with:
             name: index-file
             path: index/index.json
-        # - name: update file and push to remote
-        #   run: |
-        #       echo "Pushing index updates"
-    
-        #       cd ./index
-
-        #       git config --global user.name "github-actions[bot]"
-        #       git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        
-        #       if ! git diff --exit-code; then
-        #         git add .
-        #         git commit -m "Update ${{ env.branchtype }} index"
-        #         git fetch origin main
-        #         git push origin main
-        #       else
-        #         echo "Nothing to commit"
-        #       fi
         - name: update file and push to remote
+          ##git diff does not notice new files
+          ##Since the index.json now exists that should be fine to handle
           run: |
               echo "Pushing index updates"
     
@@ -77,9 +62,12 @@ jobs:
               git config --global user.name "github-actions[bot]"
               git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         
-
-              git add .
-              git commit -m "Update ${{ env.branchtype }} index"
-              git fetch origin main
-              git push origin main
+              if ! git diff --exit-code; then
+                git add .
+                git commit -m "Update ${{ env.branchtype }} index"
+                git fetch origin main
+                git push origin main
+              else
+                echo "Nothing to commit"
+              fi
 
