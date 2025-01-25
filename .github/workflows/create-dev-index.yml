@@ -37,8 +37,8 @@ jobs:
           with:
             # Semantic version range syntax or exact version of a Python version
             python-version: '3.9'
-        # - name: Install editable inkBoard packages
-        #   run: python3 -m pip install -e './designer' './inkBoard' './pssm' 
+        - name: Install editable inkBoard packages
+          run: python3 -m pip install -e './designer' './inkBoard' './pssm' 
         - name: Generate dev index file
           run: python index/inkBoard_indexer.py --dev
           if: env.branchtype == 'dev'
