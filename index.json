@@ -1,0 +1,24 @@
+{
+    "inkBoard": "0.3.1.dev1",
+    "PythonScreenStackManager": "0.4.1.dev1",
+    "inkBoarddesigner": "0.3.0.dev1",
+    "platforms": {
+        "kobo": "0.2.2",
+        "desktop": "0.0.2"
+    },
+    "integrations": {
+        "api": {
+            "main": "1.0.0",
+            "dev": "0.2.1"
+        },
+        "system_tray": {
+            "dev": "0.1.0"
+        },
+        "homeassistant_client": {
+            "dev": "0.2.2"
+        },
+        "meteocons": {
+            "dev": "0.1.0"
+        }
+    }
+}
