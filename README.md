@@ -5,4 +5,4 @@ Integrations and platforms are automatically extracted and compressed, the zipfi
 It extracts both the current development version and main version of both, though keep in mind those may simply be the same files (if not updated, versions may be the same without the files being the exact same).
 Indexing may change, i.e. appending versions to the package names.
 
-
+Currently, the calls to the github api are limited, since there is no way to authorise to the api. This may change later, if required, although it may also be possible to keep the api calls to a minimum. Will come later when I manage to get back to fully fleshing out the implementation in inkBoard (the main problem being the limitation I set myself to not use any/as as possible external python libraries)
