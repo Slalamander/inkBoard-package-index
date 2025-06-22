@@ -251,7 +251,7 @@ if __name__ == "__main__":
     ##Which would hold all the zip files too
     ##Would have to see if that is allowed per github rules but it seems so
     ##If so, generated zip files should be compressed.
-    # print(index)
-    if not constants.DEBUGGING:
-        with open(Path(__file__).parent / "index.json", "w") as file:
-            json.dump(index,file,indent=4)
+
+    with open(INDEX_FILE, "w") as file:
+        json.dump(index,file,indent=4)
+    print(f"Index dumped to {INDEX_FILE}")
