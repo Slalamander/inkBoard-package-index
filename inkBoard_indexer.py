@@ -17,6 +17,7 @@ from datetime import datetime as dt
 
 import inkBoard
 from inkBoard import constants
+from inkBoard.constants import DEBUGGING
 from inkBoard.types import manifestjson, platformjson
 from inkBoard.packaging import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL, parse_version
 
@@ -25,11 +26,18 @@ import PythonScreenStackManager
 
 print("Successfully imported everything")
 
-_LOGGER = inkBoard.getLogger("inkBoard-index")
+_LOGGER = inkBoard.getLogger(__name__)
 _LOGGER.setLevel(logging.INFO)
 
 INDEX_FOLDER = Path(__file__).parent
+if DEBUGGING:
+    print("Index running in debug mode")
+    _LOGGER.info("Running in DEBUG")
+    INDEX_FOLDER = INDEX_FOLDER / "debug_index"
+    if not INDEX_FOLDER.exists(): INDEX_FOLDER.mkdir()
+
 INDEX_FILE = INDEX_FOLDER / "index.json"
+
 INTEGRATION_INDEX_FOLDER = INDEX_FOLDER / "integrations"
 PLATFORM_INDEX_FOLDER = INDEX_FOLDER / "platforms"
 
@@ -237,7 +245,6 @@ if __name__ == "__main__":
         }
 
     print(index)
-    
 
     ##May actually put this in a different repo;
     ##inkBoard-index or something
@@ -245,5 +252,6 @@ if __name__ == "__main__":
     ##Would have to see if that is allowed per github rules but it seems so
     ##If so, generated zip files should be compressed.
     # print(index)
-    with open(Path(__file__).parent / "index.json", "w") as file:
-        json.dump(index,file,indent=4)
+    if not constants.DEBUGGING:
+        with open(Path(__file__).parent / "index.json", "w") as file:
+            json.dump(index,file,indent=4)
