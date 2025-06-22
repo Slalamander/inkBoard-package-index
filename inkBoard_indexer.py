@@ -13,6 +13,8 @@ import tempfile
 import zipfile
 import argparse
 
+from datetime import datetime as dt
+
 import inkBoard
 from inkBoard import constants
 from inkBoard.types import manifestjson, platformjson
@@ -45,6 +47,7 @@ else:
         "inkBoard": inkBoard.__version__,
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
         "inkBoarddesigner": inkBoarddesigner.__version__,
+        "timestamp": dt.fromtimestamp(0).isoformat(),
         "platforms": {},
         "integrations": {"api": {"main": "1.0.0"}},
         }
@@ -228,6 +231,7 @@ if __name__ == "__main__":
         "inkBoard": inkBoard.__version__,
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
         "inkBoarddesigner": inkBoarddesigner.__version__,
+        "timestamp": dt.now().isoformat(),
         "platforms": create_platform_index(args.dev),
         "integrations": create_integration_index(args.dev)
         }
