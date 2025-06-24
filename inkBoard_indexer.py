@@ -141,7 +141,7 @@ def create_platform_index(dev_mode: bool):
         if not (package_name).exists():
             create_platform_zip(p, package_name)
 
-            for file in PLATFORM_INDEX_FOLDER.glob(f"*.zip"):
+            for file in PLATFORM_INDEX_FOLDER.glob("*.zip"):
                 if pattern.match(file.name) and file.name != package_name.name:
                     print(f"Removing outdated platform package {file.name}")
                     os.remove(file)
@@ -240,6 +240,16 @@ if __name__ == "__main__":
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
         "inkBoarddesigner": inkBoarddesigner.__version__,
         "timestamp": dt.now().isoformat(),
+
+        ##For these indexes, maybe consider adding more file info?
+        ##Think timestamp, file size etc.
+        ##Also, maybe put both zips in their own folder, 
+        ##or make a folder for main/dev versions
+        ##For folder structure -> folder per integration/platform with main/dev
+        ##Then if required, older versions van also be kept in the repo i.e.
+
+        ##Also, start raising errors when versions on the main branch are typed as a dev version (i.e. have 3 '.'s)
+        ##Maybe don't let the entire workflow fail but make it show a warning/error?
         "platforms": create_platform_index(args.dev),
         "integrations": create_integration_index(args.dev)
         }
