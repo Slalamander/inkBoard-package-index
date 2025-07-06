@@ -12,6 +12,7 @@ import shutil
 import tempfile
 import zipfile
 import argparse
+from contextlib import suppress
 
 from datetime import datetime as dt
 
@@ -80,7 +81,7 @@ def gather_folders(base_folder) -> list[Path]:
         if p.is_dir(): folders.append(p)
     return folders
 
-def create_integration_index(dev_mode: bool):
+def _create_integration_index(dev_mode: bool):
     folder = constants.DESIGNER_FOLDER / "integrations"
     int_folders = gather_folders(folder)
     for p in int_folders:
@@ -200,7 +201,117 @@ def create_integration_index(dev_mode: bool):
             #         os.remove(file)
     return integration_index
 
+def create_integration_index(dev_mode: bool):
 
+    pack_type = "integration"
+    folder = constants.DESIGNER_FOLDER / "integrations"
+    int_folders = gather_folders(folder)
+    err_dict = {}
+    for p in int_folders:
+        manifest_file = p / "manifest.json"
+        if not manifest_file.exists():
+            msg = f"No manifest file for {pack_type} folder {p}"
+            _LOGGER.warning(msg)
+            err_dict[p.name] = FileNotFoundError(msg)
+            continue
+
+        branch = "dev" if dev_mode else "main"
+        with open(manifest_file) as file:
+            d = manifestjson(**json.load(file))
+
+        index_folder = INTEGRATION_INDEX_FOLDER / p.name
+        old_package = None
+        make_package = False
+        archive_old_package = False
+
+        manifest_version = parse_version(d["version"])
+        if p.name in integration_index:
+            index_version = parse_version(integration_index[p.name].get(branch, "0.0.0"))
+            integration_index[p.name][branch] = d["version"]
+        else:
+            index_version = parse_version("0.0.0")
+            integration_index[p.name] = {branch: d["version"]}
+
+        if index_version == manifest_version:
+            ##Same version, means it does not have to be made. Only make for new versions
+            _LOGGER.debug(f"{pack_type.capitalize()} {p.name} did not change version")
+            continue
+        elif index_version > manifest_version:
+            ##Version went down. Should not happen and is weird.
+            msg = f"{pack_type.capitalize()} {p.name} has an index version larger than the current manifest version"
+            _LOGGER.error(msg)
+            # raise ValueError(msg)
+            err_dict[p.name] = ValueError(msg)
+            continue
+        elif branch == "main" and manifest_version.is_prerelease:
+            ##branch cannot be main and return a prerelease version
+            msg = f"{pack_type.capitalize()} {p.name} has a prerelease version in the main branch"
+            _LOGGER.error(msg)
+            # raise ValueError(msg)
+            err_dict[p.name] = ValueError(msg)
+            continue
+
+        if not index_folder.exists():
+            _LOGGER.info(f"Making folder for {pack_type} {p.name}")
+            index_folder.mkdir()
+            (index_folder / ARCHIVE_FOLDER_STR).mkdir()
+            make_package = True
+
+            if dev_mode:
+                # package_name =  index_folder / f"{p.name}-{d['version']}_dev.zip"
+                package_name =  index_folder / f"{p.name}-{manifest_version}_dev.zip"
+            else:
+                # package_name = index_folder / f"{p.name}-{d['version']}.zip"
+                package_name =  index_folder / f"{p.name}-{manifest_version}.zip"
+
+        elif dev_mode:
+            make_package = True
+            package_name =  index_folder / f"{p.name}-{manifest_version}_dev.zip"
+            old_package = index_folder / f"{p.name}-{index_version}_dev.zip"
+            if old_package.exists() and index_version.is_prerelease:
+                ##Do not want to archive mainline versions which do not come from the main branch
+                archive_package = index_folder / ARCHIVE_FOLDER_STR / f"{p.name}-{index_version}.zip"
+                archive_old_package = True
+        else:
+            make_package = True
+            package_name = index_folder / f"{p.name}-{manifest_version}.zip"
+            old_package = index_folder / f"{p.name}-{index_version}.zip"
+            if old_package.exists():
+                archive_package = index_folder / ARCHIVE_FOLDER_STR / f"{p.name}-{index_version}.zip"
+                archive_old_package = True
+
+        if archive_old_package:
+            if archive_package.exists():
+                ##Check if the version does not exist in the archive yet
+                msg = f"Archived {pack_type} package file {archive_package.name} already exists"
+                _LOGGER.error(msg + ". Not Archiving")
+                # raise FileExistsError(msg)
+                err_dict[p.name] = FileExistsError(msg)
+                continue
+            
+            _LOGGER.info(f"Archiving old {pack_type} package {old_package.name} to {archive_package.name}")
+            old_package.replace(archive_package)
+        elif old_package and old_package.exists():
+            ##If branch == "main", the exists check is already performed and causes archive to be set to True.
+            _LOGGER.info(f"Removing old {pack_type} package {old_package.name}")
+            os.remove(old_package)
+
+        if len(index_folder.glob("*.zip")) > 1:
+            ##Check to see if the current folder structure is ok to make a new package in
+            msg = f"There are two or more packages in the main folder {index_folder} of {pack_type} {p.name} now, will not create new {pack_type} package {package_name.name}"
+            _LOGGER.error(msg)
+            # raise FileExistsError(msg)
+            err_dict[p.name] = FileExistsError(msg)
+            continue
+
+        if make_package:
+            create_integration_zip(p, package_name)
+
+    if err_dict:
+        #[ ]: Implement specific error for the inkboard index (indexerror is already a thing)
+        #[ ]: Handle this error in the workflow, as it should not lead to pushes but cause the workflow to fail (and notify me)
+        raise RuntimeWarning
+    return integration_index
 
 def create_platform_index(dev_mode: bool):
     folder = constants.DESIGNER_FOLDER / "platforms"
