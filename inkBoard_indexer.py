@@ -67,6 +67,21 @@ else:
 integration_index = current_index["integrations"].copy()
 platform_index = current_index["platforms"].copy()
 
+class inkBoardIndexingError(Exception):
+    "Base exception for errors in the indexing process"
+
+class ArchivingError(inkBoardIndexingError):
+    "Something went wrong in the archiving of an old package"
+
+class PackagingError(inkBoardIndexingError):
+    "Something went wrong packaging a platform or integration"
+
+class VersionError(inkBoardIndexingError):
+    "Mismatch in a version somewhere"
+
+class FileIndexError(inkBoardIndexingError):
+    "A file is missing, or present when it should not be"
+
 def parse_arguments():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--dev', action='store_true', dest='dev',
@@ -211,8 +226,8 @@ def create_integration_index(dev_mode: bool):
         manifest_file = p / "manifest.json"
         if not manifest_file.exists():
             msg = f"No manifest file for {pack_type} folder {p}"
-            _LOGGER.warning(msg)
-            err_dict[p.name] = FileNotFoundError(msg)
+            _LOGGER.error(msg)
+            err_dict[p.name] = FileIndexError(msg)
             continue
 
         branch = "dev" if dev_mode else "main"
@@ -240,15 +255,13 @@ def create_integration_index(dev_mode: bool):
             ##Version went down. Should not happen and is weird.
             msg = f"{pack_type.capitalize()} {p.name} has an index version larger than the current manifest version"
             _LOGGER.error(msg)
-            # raise ValueError(msg)
-            err_dict[p.name] = ValueError(msg)
+            err_dict[p.name] = VersionError(msg)
             continue
         elif branch == "main" and manifest_version.is_prerelease:
             ##branch cannot be main and return a prerelease version
             msg = f"{pack_type.capitalize()} {p.name} has a prerelease version in the main branch"
             _LOGGER.error(msg)
-            # raise ValueError(msg)
-            err_dict[p.name] = ValueError(msg)
+            err_dict[p.name] = VersionError(msg)
             continue
 
         if not index_folder.exists():
@@ -258,10 +271,8 @@ def create_integration_index(dev_mode: bool):
             make_package = True
 
             if dev_mode:
-                # package_name =  index_folder / f"{p.name}-{d['version']}_dev.zip"
                 package_name =  index_folder / f"{p.name}-{manifest_version}_dev.zip"
             else:
-                # package_name = index_folder / f"{p.name}-{d['version']}.zip"
                 package_name =  index_folder / f"{p.name}-{manifest_version}.zip"
 
         elif dev_mode:
@@ -285,8 +296,7 @@ def create_integration_index(dev_mode: bool):
                 ##Check if the version does not exist in the archive yet
                 msg = f"Archived {pack_type} package file {archive_package.name} already exists"
                 _LOGGER.error(msg + ". Not Archiving")
-                # raise FileExistsError(msg)
-                err_dict[p.name] = FileExistsError(msg)
+                err_dict[p.name] = FileIndexError(msg)
                 continue
             
             _LOGGER.info(f"Archiving old {pack_type} package {old_package.name} to {archive_package.name}")
@@ -300,17 +310,20 @@ def create_integration_index(dev_mode: bool):
             ##Check to see if the current folder structure is ok to make a new package in
             msg = f"There are two or more packages in the main folder {index_folder} of {pack_type} {p.name} now, will not create new {pack_type} package {package_name.name}"
             _LOGGER.error(msg)
-            # raise FileExistsError(msg)
-            err_dict[p.name] = FileExistsError(msg)
+            err_dict[p.name] = FileIndexError(msg)
             continue
 
         if make_package:
             create_integration_zip(p, package_name)
 
     if err_dict:
-        #[ ]: Implement specific error for the inkboard index (indexerror is already a thing)
         #[ ]: Handle this error in the workflow, as it should not lead to pushes but cause the workflow to fail (and notify me)
-        raise RuntimeWarning
+        d = {}
+        for k, v in err_dict:
+            d.setdefault(v, 0)
+            d[v] += 1
+        msg = f"Errors while creating integration index: {d}. See logs for more details"
+        raise inkBoardIndexingError(msg)
     return integration_index
 
 def create_platform_index(dev_mode: bool):
