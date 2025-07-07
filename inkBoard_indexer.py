@@ -89,12 +89,12 @@ def parse_arguments():
                         default=DEBUGGING)
     return parser.parse_args()
 
-def gather_folders(base_folder) -> list[Path]:
-    folders = []
+def gather_folders(base_folder) -> Generator[Path, None, None]:
+    """Gathers all folders in the base_folder, provided they do not start with an `_`"""
 
     for p in Path(base_folder).iterdir():
-        if p.is_dir(): folders.append(p)
-    return folders
+        if p.is_dir() and not p.name.startswith("_"):
+            yield p
 
 def _create_integration_index(dev_mode: bool):
     folder = constants.DESIGNER_FOLDER / "integrations"
