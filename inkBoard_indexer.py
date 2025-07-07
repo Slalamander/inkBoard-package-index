@@ -317,7 +317,6 @@ def create_integration_index(dev_mode: bool):
             create_integration_zip(p, package_name)
 
     if err_dict:
-        #[ ]: Handle this error in the workflow, as it should not lead to pushes but cause the workflow to fail (and notify me)
         d = {}
         for k, v in err_dict:
             d.setdefault(v, 0)
@@ -445,10 +444,7 @@ def create_platform_zip(platform_folder: Path, zip_file_path: Path):
         print(f"Succesfully packaged platform {name}")
     return
 
-if __name__ == "__main__":
-    
-    print("indexer running")
-
+def main():
     args = parse_arguments()
     index = {
         "inkBoard": inkBoard.__version__,
@@ -480,3 +476,9 @@ if __name__ == "__main__":
     with open(INDEX_FILE, "w") as file:
         json.dump(index,file,indent=4)
     print(f"Index dumped to {INDEX_FILE}")
+
+if __name__ == "__main__":
+    
+    print("indexer running")
+    main()
+
