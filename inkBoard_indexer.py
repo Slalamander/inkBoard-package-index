@@ -326,10 +326,119 @@ def create_integration_index(dev_mode: bool):
     return integration_index
 
 def create_platform_index(dev_mode: bool):
+    pack_type = "platform"
+    folder = constants.DESIGNER_FOLDER / "platforms"
+    int_folders = gather_folders(folder)
+    err_dict = {}
+    for p in int_folders:
+        platform_file = p / "platforms.json"
+        if not platform_file.exists():
+            msg = f"No platform file for {pack_type} folder {p}"
+            _LOGGER.error(msg)
+            err_dict[p.name] = FileIndexError(msg)
+            continue
+
+        branch = "dev" if dev_mode else "main"
+        with open(platform_file) as file:
+            d = platformjson(**json.load(file))
+
+        index_folder = INTEGRATION_INDEX_FOLDER / p.name
+        old_package = None
+        make_package = False
+        archive_old_package = False
+
+        platform_version = parse_version(d["version"])
+        if p.name in platform_index:
+            index_version = parse_version(platform_index[p.name].get(branch, "0.0.0"))
+            platform_index[p.name][branch] = d["version"]
+        else:
+            index_version = parse_version("0.0.0")
+            platform_index[p.name] = {branch: d["version"]}
+
+        if index_version == platform_version:
+            ##Same version, means it does not have to be made. Only make for new versions
+            _LOGGER.debug(f"{pack_type.capitalize()} {p.name} did not change version")
+            continue
+        elif index_version > platform_version:
+            ##Version went down. Should not happen and is weird.
+            msg = f"{pack_type.capitalize()} {p.name} has an index version larger than the current platform version"
+            _LOGGER.error(msg)
+            err_dict[p.name] = VersionError(msg)
+            continue
+        elif branch == "main" and platform_version.is_prerelease:
+            ##branch cannot be main and return a prerelease version
+            msg = f"{pack_type.capitalize()} {p.name} has a prerelease version in the main branch"
+            _LOGGER.error(msg)
+            err_dict[p.name] = VersionError(msg)
+            continue
+
+        if not index_folder.exists():
+            _LOGGER.info(f"Making folder for {pack_type} {p.name}")
+            index_folder.mkdir()
+            (index_folder / ARCHIVE_FOLDER_STR).mkdir()
+            make_package = True
+
+            if dev_mode:
+                package_name =  index_folder / f"{p.name}-{platform_version}_dev.zip"
+            else:
+                package_name =  index_folder / f"{p.name}-{platform_version}.zip"
+
+        elif dev_mode:
+            make_package = True
+            package_name =  index_folder / f"{p.name}-{platform_version}_dev.zip"
+            old_package = index_folder / f"{p.name}-{index_version}_dev.zip"
+            if old_package.exists() and index_version.is_prerelease:
+                ##Do not want to archive mainline versions which do not come from the main branch
+                archive_package = index_folder / ARCHIVE_FOLDER_STR / f"{p.name}-{index_version}.zip"
+                archive_old_package = True
+        else:
+            make_package = True
+            package_name = index_folder / f"{p.name}-{platform_version}.zip"
+            old_package = index_folder / f"{p.name}-{index_version}.zip"
+            if old_package.exists():
+                archive_package = index_folder / ARCHIVE_FOLDER_STR / f"{p.name}-{index_version}.zip"
+                archive_old_package = True
+
+        if archive_old_package:
+            if archive_package.exists():
+                ##Check if the version does not exist in the archive yet
+                msg = f"Archived {pack_type} package file {archive_package.name} already exists"
+                _LOGGER.error(msg + ". Not Archiving")
+                err_dict[p.name] = FileIndexError(msg)
+                continue
+            
+            _LOGGER.info(f"Archiving old {pack_type} package {old_package.name} to {archive_package.name}")
+            old_package.replace(archive_package)
+        elif old_package and old_package.exists():
+            ##If branch == "main", the exists check is already performed and causes archive to be set to True.
+            _LOGGER.info(f"Removing old {pack_type} package {old_package.name}")
+            os.remove(old_package)
+
+        if len(list(index_folder.glob("*.zip"))) > 1:
+            ##Check to see if the current folder structure is ok to make a new package in
+            msg = f"There are two or more packages in the main folder {index_folder} of {pack_type} {p.name} now, will not create new {pack_type} package {package_name.name}"
+            _LOGGER.error(msg)
+            err_dict[p.name] = FileIndexError(msg)
+            continue
+
+        if make_package:
+            create_platform_zip(p, package_name)
+
+    if err_dict:
+        d = {}
+        for k, v in err_dict.items():
+            d.setdefault(v, 0)
+            d[v] += 1
+        msg = f"Errors while creating {pack_type} index: {d}. See logs for more details"
+        raise inkBoardIndexingError(msg)
+    return platform_index
+
+
+def _create_platform_index(dev_mode: bool):
     folder = constants.DESIGNER_FOLDER / "platforms"
     plt_folders = gather_folders(folder)
     for p in plt_folders:
-        platform_file = p / "platform.json"
+        platform_file = p / "platforms.json"
         if not platform_file.exists():
             continue
 
