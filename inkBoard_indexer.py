@@ -2,7 +2,7 @@
 
 Meant to be used with github workflows
 """
-
+from typing import Generator
 import os
 import re
 import json
@@ -31,6 +31,9 @@ print("Successfully imported everything")
 
 _LOGGER = inkBoard.getLogger(__name__)
 _LOGGER.setLevel(logging.INFO)
+
+LOGGER_FORMAT = '${asctime} [${levelname}]: ${message}'
+LOGGER_DATE_FORMAT = '%H:%M:%S'
 
 INDEX_FOLDER = Path(__file__).parent
 if DEBUGGING:
@@ -306,7 +309,7 @@ def create_integration_index(dev_mode: bool):
             _LOGGER.info(f"Removing old {pack_type} package {old_package.name}")
             os.remove(old_package)
 
-        if len(index_folder.glob("*.zip")) > 1:
+        if len(list(index_folder.glob("*.zip"))) > 1:
             ##Check to see if the current folder structure is ok to make a new package in
             msg = f"There are two or more packages in the main folder {index_folder} of {pack_type} {p.name} now, will not create new {pack_type} package {package_name.name}"
             _LOGGER.error(msg)
@@ -318,10 +321,10 @@ def create_integration_index(dev_mode: bool):
 
     if err_dict:
         d = {}
-        for k, v in err_dict:
+        for k, v in err_dict.items():
             d.setdefault(v, 0)
             d[v] += 1
-        msg = f"Errors while creating integration index: {d}. See logs for more details"
+        msg = f"Errors while creating {pack_type} index: {d}. See logs for more details"
         raise inkBoardIndexingError(msg)
     return integration_index
 
@@ -509,14 +512,14 @@ def create_integration_zip(integration_folder: Path, zip_file_path: Path):
 
     with tempfile.TemporaryDirectory(dir=str(INTEGRATION_INDEX_FOLDER)) as tempdir:
         name = integration_folder.name
-        print(f"Gathering integration {name}")
+        _LOGGER.info(f"Gathering integration {name}")
         shutil.copytree(
             src = integration_folder,
             dst= Path(tempdir) / name,
             ignore=lambda *args: ("__pycache__","emulator.json", "designer", "designer.py")
         )
 
-        print(f"Zipping up integration {name} to {zip_file_path}")
+        _LOGGER.debug(f"Zipping up integration {name} to {zip_file_path}")
         with zipfile.ZipFile(zip_file_path, 'w', ZIP_COMPRESSION, compresslevel=ZIP_COMPRESSION_LEVEL) as zip_file:
             for foldername, subfolders, filenames in os.walk(tempdir):
                 _LOGGER.verbose(f"Zipping contents of folder {foldername}")
@@ -526,21 +529,21 @@ def create_integration_zip(integration_folder: Path, zip_file_path: Path):
                 for dir in subfolders:
                     dir_path = os.path.join(foldername, dir)
                     zip_file.write(dir_path, os.path.relpath(dir_path, tempdir))
-        print(f"Succesfully packaged integration {name}")
+        _LOGGER.info(f"Succesfully packaged integration {name}")
     return
 
 def create_platform_zip(platform_folder: Path, zip_file_path: Path):
     
     with tempfile.TemporaryDirectory(dir=str(INTEGRATION_INDEX_FOLDER)) as tempdir:
         name = platform_folder.name
-        print(f"Gathering platform {name}")
+        _LOGGER.info(f"Gathering platform {name}")
         shutil.copytree(
             src = platform_folder,
             dst= Path(tempdir) / name,
             ignore=lambda *args: ("__pycache__","designer.py", "designer")
         )
 
-        print(f"Zipping up platform {name} to {zip_file_path}")
+        _LOGGER.debug(f"Zipping up platform {name} to {zip_file_path}")
         with zipfile.ZipFile(zip_file_path, 'w', ZIP_COMPRESSION, compresslevel=ZIP_COMPRESSION_LEVEL) as zip_file:
             for foldername, subfolders, filenames in os.walk(tempdir):
                 _LOGGER.verbose(f"Zipping contents of folder {foldername}")
@@ -550,11 +553,21 @@ def create_platform_zip(platform_folder: Path, zip_file_path: Path):
                 for dir in subfolders:
                     dir_path = os.path.join(foldername, dir)
                     zip_file.write(dir_path, os.path.relpath(dir_path, tempdir))
-        print(f"Succesfully packaged platform {name}")
+        _LOGGER.info(f"Succesfully packaged platform {name}")
     return
 
 def main():
+    streamhandler = logging.StreamHandler()
+    streamhandler.setFormatter(ColorFormatter(LOGGER_FORMAT, LOGGER_DATE_FORMAT))
+    logging.basicConfig(
+        format=LOGGER_FORMAT,
+        datefmt=LOGGER_DATE_FORMAT,
+        style="$",
+        handlers=[streamhandler])
+    _LOGGER.info("Setup Logging")
     args = parse_arguments()
+    updated_integration_index = create_integration_index(args.dev)
+    updated_platform_index = create_platform_index(args.dev)
     index = {
         "inkBoard": inkBoard.__version__,
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
@@ -570,8 +583,8 @@ def main():
 
         ##Also, start raising errors when versions on the main branch are typed as a dev version (i.e. have 3 '.'s)
         ##Maybe don't let the entire workflow fail but make it show a warning/error?
-        "platforms": create_platform_index(args.dev),
-        "integrations": create_integration_index(args.dev)
+        "platforms": updated_platform_index,
+        "integrations": updated_integration_index
         }
 
     print(index)
