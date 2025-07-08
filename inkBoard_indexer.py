@@ -99,7 +99,7 @@ def add_and_push_commit(add_path : str, message : str):
     ##Current exit status is 128. This appears to have to do with the config/account management
     ##I.e. Seems like the git config is not saved between steps?
     _LOGGER.info(f"Pushing a commit {add_path}: {message}")
-    subprocess.run(["git", "add", "."], check=True, stdout=subprocess.PIPE).stdout
+    subprocess.run(["git", "add", "./index"], check=True, stdout=subprocess.PIPE).stdout
     subprocess.run(["git", "comment", "-m", message], check=True, stdout=subprocess.PIPE).stdout
 
 def create_integration_index(dev_mode: bool):
