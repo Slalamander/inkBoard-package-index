@@ -22,7 +22,7 @@ from inkBoard import constants
 from inkBoard.constants import DEBUGGING
 from inkBoard.types import manifestjson, platformjson
 from inkBoard.packaging.constants import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL
-from inkBoard.packaging.version import parse_version
+from inkBoard.packaging.version import parse_version, write_package_version_filename
 
 import inkBoarddesigner
 import PythonScreenStackManager
@@ -98,126 +98,6 @@ def gather_folders(base_folder) -> Generator[Path, None, None]:
     for p in Path(base_folder).iterdir():
         if p.is_dir() and not p.name.startswith("_"):
             yield p
-
-def _create_integration_index(dev_mode: bool):
-    folder = constants.DESIGNER_FOLDER / "integrations"
-    int_folders = gather_folders(folder)
-    for p in int_folders:
-        manifest_file = p / "manifest.json"
-        if not manifest_file.exists():
-            _LOGGER.warning(f"No manifest file for integration folder {p}")
-            continue
-
-        key = "dev" if dev_mode else "main"
-        with open(manifest_file) as file:
-            d = manifestjson(**json.load(file))
-
-        if p.name in integration_index:
-            old_version = parse_version(integration_index[p.name].get(key, "0.0.0"))
-            integration_index[p.name][key] = d["version"]
-        else:
-            old_version = parse_version("0.0.0")
-            integration_index[p.name] = {key: d["version"]}
-
-        pack_pattern = p.name + r'(?P<version>(([0-9]+\.){2}[0-9]+))' + r"\.zip"
-
-        ##Maybe change this pattern? HA for betas uses 2025.6.0b1 etc
-        pack_dev_pattern = p.name + r'(?P<version>(([0-9]+\.){2}[0-9]+)|(([0-9]+\.){3}[ab][0-9]+))' + r"_dev\.zip"   ##dev version matches both for normal versioning AND beta versioning
-        
-        integration_folder = INTEGRATION_INDEX_FOLDER / p.name
-        if not integration_folder.exists():
-            _LOGGER.info(f"Making folder for integration {p.name}")
-            integration_folder.mkdir()
-            (integration_folder / ARCHIVE_FOLDER_STR).mkdir()
-        
-        make_package = True
-        if dev_mode:
-            package_name =  integration_folder / f"{p.name}-{d['version']}_dev.zip"
-            pattern = p.name + DEV_PATTERN
-            pack_pattern = re.compile(pack_dev_pattern)
-        else:
-            package_name = integration_folder / f"{p.name}-{d['version']}.zip"
-            pattern = p.name + DEV_PATTERN
-            # pack_glob = f"{p.name}-*.zip"
-            # pack_pattern = p.name + r'((([0-9]+\.){2}[0-9]+))' + r"\.zip"
-            pack_pattern = re.compile(pack_pattern)
-            if package_name.exists():
-                make_package = False
-        
-        # pattern = re.compile(pattern)
-
-        # if not (package_name).exists():
-
-        if make_package:
-            #[x]: older versions can be moved to a "versions" folder
-            ##      overwrite: yes, unless dev_mode True and not a pattern match
-            archive_old = False
-
-            current_file = [f for f in integration_folder.glob("*.zip") if pack_pattern.match(f.name)]
-            if len(current_file) > 1:
-                raise OSError("Found more than one package")
-            elif len(current_file) == 1:
-                ##Take care of copying and renaming the correct file
-                ##If in dev mode: check if the current dev file version is a beta version
-                ##If so: can copy; If not: only copy if the version package does not yet exist?
-                ##Means: if i.e. 0.1.1 already has a package in the version list: 
-                ##          It is either from main; or from the dev branch. So may enable downloading of untested versions.
-                ##          So no, will not do so. Aside from the fact that archiving dev versions may be disabled too at some point.
-                ##          Do log a warning I guess? Although I could probably not see that lol
-                
-                ##parse_version should generally use packaging I think?
-                ##Which means: https://packaging.python.org/en/latest/specifications/version-specifiers/#pre-releases holds for versioning
-                ##pre_release is true for things like X.YaN; dev release is true for X.Y.devN
-
-                if dev_mode:
-                    current_file = current_file[0]
-                    file_version_str = pack_pattern.match(current_file.name).group("version")
-                    file_version = parse_version(file_version_str)
-                    if file_version.is_devrelease or file_version.is_prerelease:
-                        ##We copy
-                        archive_file_name = p.name + file_version + ".zip"
-                        archive_old = True
-                else:
-                    ##Not in dev mode. No checks needed on the currently present file.
-                    ##Should not be a dev release (check happened in previous run)
-                    ##File should never be deleted and always copied
-                    current_file = current_file[0]
-                    archive_old = True
-                    archive_file_name = current_file.name
-                
-            if archive_old:
-                archive_dst = integration_folder / ARCHIVE_FOLDER_STR / archive_file_name
-                if archive_dst.exists() and not dev_mode:
-                    raise FileExistsError("Should not replace older versions that are not dev modes")
-                archive_dst = current_file.replace(archive_dst)
-                # replace does not care about already existing files, change rename if that is desired
-                _LOGGER.info(f"Archived old version of integration {p.name} to {archive_dst}")
-            else:
-                ##Determine when to remove an old file...
-                ##Honestly, for the entire logic, sketch a flow diagram cause this is not working.
-                ##Should include:
-                ##  - When to make a package
-                ##  - When to archive the old package
-                ##  - When to remove the old package
-            
-                ##Conditions to remove the old zip file:
-                ##archive_old is False (it has already been moved otherwise)
-                ##dev_mode is True (If dev_mode is False, archive_old should automatically be True)
-                ##current_file is not a dev version (for example, file 0.2.0_dev will not be moved, since it is not a dev version. Meaning it should be removed if the new dev version is something else.)
-                ##current file version is different from the old version
-
-                ##What to do if dev_mode and current version are the same though?
-                ##Tbh, only the first iteration of a version should be packaged...
-                ##Because otherwise the contents of a version will not be consistent, which you simply don't want.
-                pass
-
-            create_integration_zip(p, package_name)
-
-            # for file in (INTEGRATION_INDEX_FOLDER / p.name).glob(f"*.zip"):
-            #     if pattern.match(file.name) and file.name != package_name.name:
-            #         print(f"Removing outdated integration package {file.name}")
-            #         os.remove(file)
-    return integration_index
 
 def create_integration_index(dev_mode: bool):
 
@@ -437,42 +317,6 @@ def create_platform_index(dev_mode: bool):
     return platform_index
 
 
-def _create_platform_index(dev_mode: bool):
-    folder = constants.DESIGNER_FOLDER / "platforms"
-    plt_folders = gather_folders(folder)
-    for p in plt_folders:
-        platform_file = p / "platforms.json"
-        if not platform_file.exists():
-            continue
-
-        key = "dev" if dev_mode else "main"
-
-        with open(platform_file) as file:
-            d = platformjson(**json.load(file))
-
-        if p.name in platform_index:
-            platform_index[p.name][key] = d["version"]
-        else:
-            platform_index[p.name] = {key: d["version"]}
-
-        if dev_mode:
-            package_name = PLATFORM_INDEX_FOLDER / f"{p.name}{d['version']}_dev.zip"
-            pattern = p.name + DEV_PATTERN
-        else:
-            package_name = PLATFORM_INDEX_FOLDER / f"{p.name}{d['version']}.zip"
-            pattern = p.name + MAIN_PATTERN
-        
-        pattern = re.compile(pattern)
-        
-        if not (package_name).exists():
-            create_platform_zip(p, package_name)
-
-            for file in PLATFORM_INDEX_FOLDER.glob("*.zip"):
-                if pattern.match(file.name) and file.name != package_name.name:
-                    print(f"Removing outdated platform package {file.name}")
-                    os.remove(file)
-
-    return platform_index
 
 ##for the zips, would they only be for inkBoard, and not the designer?
 ##I.e. should the zips not hold any data that would be omitted when downloading
