@@ -22,7 +22,7 @@ from inkBoard import constants
 from inkBoard.constants import DEBUGGING
 from inkBoard.types import manifestjson, platformjson
 from inkBoard.packaging.constants import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL
-from inkBoard.packaging.version import parse_version, write_package_version_filename
+from inkBoard.packaging.version import parse_version, write_version_filename
 
 import inkBoarddesigner
 import PythonScreenStackManager
@@ -154,27 +154,26 @@ def create_integration_index(dev_mode: bool):
             make_package = True
 
             if dev_mode:
-                package_name =  index_folder / f"{p.name}-{manifest_version}_dev.zip"
+                package_name =  index_folder / index_folder / write_version_filename(p.name, manifest_version, "_dev.zip")
             else:
-                package_name =  index_folder / f"{p.name}-{manifest_version}.zip"
+                package_name =  index_folder / write_version_filename(p.name, manifest_version)
 
         elif dev_mode:
             make_package = True
-            package_name =  index_folder / f"{p.name}-{manifest_version}_dev.zip"
-            old_package = index_folder / f"{p.name}-{index_version}_dev.zip"
+            package_name =  index_folder / write_version_filename(p.name, manifest_version, "_dev.zip")
+            old_package =  index_folder / write_version_filename(p.name, index_version, "_dev.zip")
             if old_package.exists() and index_version.is_prerelease:
                 ##Do not want to archive mainline versions which do not come from the main branch
-                archive_package = index_folder / ARCHIVE_FOLDER_STR / f"{p.name}-{index_version}.zip"
                 archive_old_package = True
         else:
             make_package = True
-            package_name = index_folder / f"{p.name}-{manifest_version}.zip"
-            old_package = index_folder / f"{p.name}-{index_version}.zip"
+            package_name =  index_folder / write_version_filename(p.name, manifest_version)
+            old_package =  index_folder / write_version_filename(p.name, index_version)
             if old_package.exists():
-                archive_package = index_folder / ARCHIVE_FOLDER_STR / f"{p.name}-{index_version}.zip"
                 archive_old_package = True
 
         if archive_old_package:
+            archive_package = index_folder / ARCHIVE_FOLDER_STR / write_version_filename(p.name, index_version)
             if archive_package.exists():
                 ##Check if the version does not exist in the archive yet
                 msg = f"Archived {pack_type} package file {archive_package.name} already exists"
@@ -214,7 +213,7 @@ def create_platform_index(dev_mode: bool):
     int_folders = gather_folders(folder)
     err_dict = {}
     for p in int_folders:
-        platform_file = p / "platforms.json"
+        platform_file = p / "platform.json"
         if not platform_file.exists():
             msg = f"No platform file for {pack_type} folder {p}"
             _LOGGER.error(msg)
@@ -262,27 +261,26 @@ def create_platform_index(dev_mode: bool):
             make_package = True
 
             if dev_mode:
-                package_name =  index_folder / f"{p.name}-{platform_version}_dev.zip"
+                package_name =  index_folder / write_version_filename(p.name, platform_version, "_dev.zip")
             else:
-                package_name =  index_folder / f"{p.name}-{platform_version}.zip"
+                package_name =  index_folder / write_version_filename(p.name, platform_version)
 
         elif dev_mode:
             make_package = True
-            package_name =  index_folder / f"{p.name}-{platform_version}_dev.zip"
-            old_package = index_folder / f"{p.name}-{index_version}_dev.zip"
+            package_name =  index_folder / write_version_filename(p.name, platform_version, "_dev.zip")
+            old_package =  index_folder / write_version_filename(p.name, index_version, "_dev.zip")
             if old_package.exists() and index_version.is_prerelease:
                 ##Do not want to archive mainline versions which do not come from the main branch
-                archive_package = index_folder / ARCHIVE_FOLDER_STR / f"{p.name}-{index_version}.zip"
                 archive_old_package = True
         else:
             make_package = True
-            package_name = index_folder / f"{p.name}-{platform_version}.zip"
-            old_package = index_folder / f"{p.name}-{index_version}.zip"
+            package_name =  index_folder / write_version_filename(p.name, platform_version)
+            old_package =  index_folder / write_version_filename(p.name, index_version)
             if old_package.exists():
-                archive_package = index_folder / ARCHIVE_FOLDER_STR / f"{p.name}-{index_version}.zip"
                 archive_old_package = True
 
         if archive_old_package:
+            archive_package = index_folder / ARCHIVE_FOLDER_STR / write_version_filename(p.name, index_version)
             if archive_package.exists():
                 ##Check if the version does not exist in the archive yet
                 msg = f"Archived {pack_type} package file {archive_package.name} already exists"
@@ -360,7 +358,7 @@ def create_integration_zip(integration_folder: Path, zip_file_path: Path):
         shutil.copytree(
             src = integration_folder,
             dst= Path(tempdir) / name,
-            ignore=lambda *args: ("__pycache__","emulator.json", "designer", "designer.py")
+            ignore=lambda *args: ("__pycache__", "designer", "designer.py")
         )
 
         _LOGGER.debug(f"Zipping up integration {name} to {zip_file_path}")
@@ -384,7 +382,7 @@ def create_platform_zip(platform_folder: Path, zip_file_path: Path):
         shutil.copytree(
             src = platform_folder,
             dst= Path(tempdir) / name,
-            ignore=lambda *args: ("__pycache__","designer.py", "designer")
+            ignore=lambda *args: ("__pycache__", "emulator.json", "designer.py", "designer")
         )
 
         _LOGGER.debug(f"Zipping up platform {name} to {zip_file_path}")
