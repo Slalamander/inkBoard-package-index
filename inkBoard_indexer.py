@@ -473,12 +473,16 @@ def main():
         json.dump(index,file,indent=4)
     print(f"Index dumped to {INDEX_FILE}")
 
-    #[ ] Probably do push/pull in here too instead of the workflow -> that way the exit code can be set without it causing issues, and hopefully it reflects in the workflow
-    #[ ] Implement the final commit/push code
-    #[ ] add argument for the running branch
+    #[x] Probably do push/pull in here too instead of the workflow -> that way the exit code can be set without it causing issues, and hopefully it reflects in the workflow
+    #[x] Implement the final commit/push code
+    #[x] add argument for the running branch
+    #[ ] Set exit code according to output of packagers
 
     if args.commit:
-        pass
+        add_and_push_commit(".", f"Updated {'dev' if args.dev else 'main'} index")
+        subprocess.run(["git", "fetch", "origin", args.branch], check=True, stdout=subprocess.PIPE).stdout
+        subprocess.run(["git", "push", "origin", args.branch], check=True, stdout=subprocess.PIPE).stdout
+
 
     return 0
 
