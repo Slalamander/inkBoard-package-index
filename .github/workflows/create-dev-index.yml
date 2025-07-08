@@ -59,15 +59,15 @@ jobs:
           ##git diff does not notice new files
           ##Since the index.json now exists that should be fine to handle
           run: |
-              echo "Pushing index updates"
+              echo "Pushing index updates on branch ${{ github.ref_name }}"
     
               cd ./index
        
               if ! git diff --exit-code; then
                 git add .
                 git commit -m "Update ${{ env.branchtype }} index"
-                git fetch origin main
-                git push origin main
+                git fetch origin ${{ github.ref_name }}
+                git push origin ${{ github.ref_name }}
               else
                 echo "Nothing to commit"
               fi
