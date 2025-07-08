@@ -100,7 +100,7 @@ def add_and_push_commit(add_path : str, message : str):
     ##I.e. Seems like the git config is not saved between steps?
     _LOGGER.info(f"Pushing a commit {add_path}: {message}")
     subprocess.run(["git", "add", INDEX_FOLDER], check=True, stdout=subprocess.PIPE).stdout
-    subprocess.run(["git", "comment", "-m", message], check=True, stdout=subprocess.PIPE).stdout
+    subprocess.run(["git", "commit", "-m", message], check=True, stdout=subprocess.PIPE).stdout
 
 def create_integration_index(dev_mode: bool):
 
