@@ -62,6 +62,7 @@ jobs:
             name: index-file
             path: index/index.json
         - name: update file and push to remote
+          if: env.branchtype != 'dev'
           ##git diff does not notice new files
           ##Since the index.json now exists that should be fine to handle
           run: |
