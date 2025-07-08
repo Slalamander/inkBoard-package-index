@@ -19,12 +19,8 @@ jobs:
             path: index
         - name: Configure Git
           run: |
-              echo "Configuring git"
-
               git config --global user.name "github-actions[bot]"
               git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-              cd ./index
         - uses: actions/checkout@v4
           with:  
             repository: Slalamander/inkBoarddesigner
@@ -48,7 +44,7 @@ jobs:
         - name: Install editable inkBoard packages
           run: python3 -m pip install -e './designer' './inkBoard' './pssm' 
         - name: Generate dev index file
-          run: python ./inkBoard_indexer.py --dev
+          run: python index/inkBoard_indexer.py --dev
           if: env.branchtype == 'dev'
         - name: Generate main index file
           run: python index/inkBoard_indexer.py
@@ -58,7 +54,7 @@ jobs:
           uses: actions/upload-artifact@v4
           with:
             name: index-file
-            path: ./index.json
+            path: index/index.json
         - name: update file and push to remote
           ##git diff does not notice new files
           ##Since the index.json now exists that should be fine to handle
