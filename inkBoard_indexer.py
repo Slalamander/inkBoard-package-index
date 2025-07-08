@@ -146,7 +146,7 @@ def create_integration_index(dev_mode: bool):
             make_package = True
 
             if dev_mode:
-                package_name =  index_folder / index_folder / write_version_filename(p.name, manifest_version, "_dev.zip")
+                package_name =  index_folder / write_version_filename(p.name, manifest_version, "_dev.zip")
             else:
                 package_name =  index_folder / write_version_filename(p.name, manifest_version)
 
