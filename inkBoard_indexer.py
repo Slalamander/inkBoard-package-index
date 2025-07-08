@@ -11,19 +11,21 @@ import shutil
 import tempfile
 import zipfile
 import argparse
+import sys
 
 from datetime import datetime as dt
 
 import inkBoard
 from inkBoard.logging import ColorFormatter
 from inkBoard import constants
-from inkBoard.constants import DEBUGGING
 from inkBoard.types import manifestjson, platformjson
 from inkBoard.packaging.constants import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL
 from inkBoard.packaging.version import parse_version, write_version_filename
 
 import inkBoarddesigner
 import PythonScreenStackManager
+
+DEBUGGING = bool(sys.gettrace())
 
 _LOGGER = inkBoard.getLogger(__name__)
 _LOGGER.setLevel(logging.INFO)
