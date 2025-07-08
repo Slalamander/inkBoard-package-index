@@ -50,7 +50,7 @@ jobs:
 
             cd ./index
 
-            python inkBoard_indexer.py --dev
+            python inkBoard_indexer.py --dev --commit --branch ${{ github.ref_name }}
           if: env.branchtype == 'dev'
         - name: Generate main index file
           run: python index/inkBoard_indexer.py
