@@ -107,7 +107,7 @@ def add_and_push_commit(add_path : str, message : str):
     subprocess.run(["git", "add", INDEX_FOLDER], check=True, stdout=subprocess.PIPE).stdout
     subprocess.run(["git", "commit", "-m", message], check=True, stdout=subprocess.PIPE).stdout
 
-def create_integration_index(dev_mode: bool):
+def create_integration_index(dev_mode: bool, commit_changes : bool):
 
     pack_type = "integration"
     folder = constants.DESIGNER_FOLDER / "integrations"
@@ -205,7 +205,8 @@ def create_integration_index(dev_mode: bool):
 
         if make_package:
             create_integration_zip(p, package_name)
-            add_and_push_commit(str(index_folder), f"Packaged {pack_type} {p.name} version {manifest_version}")
+            if commit_changes:
+                add_and_push_commit(str(index_folder), f"Packaged {pack_type} {p.name} version {manifest_version}")
 
     if err_dict:
         d = {}
@@ -216,7 +217,7 @@ def create_integration_index(dev_mode: bool):
         raise inkBoardIndexingError(msg)
     return integration_index
 
-def create_platform_index(dev_mode: bool):
+def create_platform_index(dev_mode: bool, commit_changes : bool):
     pack_type = "platform"
     folder = constants.DESIGNER_FOLDER / "platforms"
     int_folders = gather_folders(folder)
@@ -313,6 +314,9 @@ def create_platform_index(dev_mode: bool):
 
         if make_package:
             create_platform_zip(p, package_name)
+            if commit_changes:
+                add_and_push_commit(str(index_folder), f"Packaged {pack_type} {p.name} version {platform_version}")
+
 
     if err_dict:
         d = {}
@@ -431,6 +435,9 @@ def main():
         style="$",
         handlers=[streamhandler])
 
+    if args.commit and args.branch is None:
+        raise argparse.ArgumentError(None, "When supplying --commit, branch must be specified")
+
     if DEBUGGING:
         msg = "Indexer running in DEBUG mode"    
         if args.dev:
@@ -443,8 +450,8 @@ def main():
 
     folder_setup()
 
-    updated_integration_index = create_integration_index(args.dev)
-    updated_platform_index = create_platform_index(args.dev)
+    updated_integration_index = create_integration_index(args.dev, args.commit)
+    updated_platform_index = create_platform_index(args.dev, args.commit)
     index = {
         "inkBoard": inkBoard.__version__,
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
@@ -469,6 +476,9 @@ def main():
     #[ ] Probably do push/pull in here too instead of the workflow -> that way the exit code can be set without it causing issues, and hopefully it reflects in the workflow
     #[ ] Implement the final commit/push code
     #[ ] add argument for the running branch
+
+    if args.commit:
+        pass
 
     return 0
 
