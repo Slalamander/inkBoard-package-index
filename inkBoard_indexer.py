@@ -225,7 +225,7 @@ def create_platform_index(dev_mode: bool):
         with open(platform_file) as file:
             d = platformjson(**json.load(file))
 
-        index_folder = INTEGRATION_INDEX_FOLDER / p.name
+        index_folder = PLATFORM_INDEX_FOLDER / p.name
         old_package = None
         make_package = False
         archive_old_package = False
