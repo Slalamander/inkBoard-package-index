@@ -1,4 +1,4 @@
-name: Create the dev index
+name: Create the main index
 
 on: 
     workflow_dispatch:
