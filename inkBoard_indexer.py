@@ -96,6 +96,7 @@ def add_and_push_commit(add_path : str, message : str):
     """Pushes a commit
     """
 
+    _LOGGER.info(f"Pushing a commit {add_path}: {message}")
     subprocess.run(["git", "add", add_path], check=True, stdout=subprocess.PIPE).stdout
     subprocess.run(["git", "comment", "-m", message], check=True, stdout=subprocess.PIPE).stdout
 
