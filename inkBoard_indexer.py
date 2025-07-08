@@ -83,6 +83,11 @@ def parse_arguments():
     parser.add_argument('--dev', action='store_true', dest='dev',
                         help="Assumed zip packages created are dev packages, and appends _dev to the packages",
                         default=DEBUGGING)
+    parser.add_argument('--commit', action='store_true', dest='commit',
+                    help="Commit changes while running the script",
+                    default=False)
+    parser.add_argument('--branch', dest="branch",
+                        help="The branch to push the changes to. Ignored if --commit is not passed", default=None)
     return parser.parse_args()
 
 def gather_folders(base_folder) -> Generator[Path, None, None]:
@@ -461,8 +466,14 @@ def main():
         json.dump(index,file,indent=4)
     print(f"Index dumped to {INDEX_FILE}")
 
+    #[ ] Probably do push/pull in here too instead of the workflow -> that way the exit code can be set without it causing issues, and hopefully it reflects in the workflow
+    #[ ] Implement the final commit/push code
+    #[ ] add argument for the running branch
+
+    return 0
+
 if __name__ == "__main__":
     
     print("indexer running")
-    main()
+    sys.exit(main())
 
