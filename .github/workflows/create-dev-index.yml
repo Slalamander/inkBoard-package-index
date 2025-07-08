@@ -48,7 +48,9 @@ jobs:
             git config --global user.name "github-actions[bot]"
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-            python index/inkBoard_indexer.py --dev
+            cd ./index
+
+            python inkBoard_indexer.py --dev
           if: env.branchtype == 'dev'
         - name: Generate main index file
           run: python index/inkBoard_indexer.py
