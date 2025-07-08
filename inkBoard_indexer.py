@@ -27,8 +27,6 @@ from inkBoard.packaging.version import parse_version, write_version_filename
 import inkBoarddesigner
 import PythonScreenStackManager
 
-print("Successfully imported everything")
-
 _LOGGER = inkBoard.getLogger(__name__)
 _LOGGER.setLevel(logging.INFO)
 
@@ -37,10 +35,7 @@ LOGGER_DATE_FORMAT = '%H:%M:%S'
 
 INDEX_FOLDER = Path(__file__).parent
 if DEBUGGING:
-    print("Index running in debug mode")
-    _LOGGER.info("Running in DEBUG")
     INDEX_FOLDER = INDEX_FOLDER / "debug_index"
-    if not INDEX_FOLDER.exists(): INDEX_FOLDER.mkdir()
 
 INDEX_FILE = INDEX_FOLDER / "index.json"
 
@@ -50,9 +45,6 @@ ARCHIVE_FOLDER_STR = "versions"
 
 DEV_PATTERN = r"([0-9.]+)_dev.zip"
 MAIN_PATTERN = r"([0-9.]+).zip"
-
-if not INTEGRATION_INDEX_FOLDER.exists(): INTEGRATION_INDEX_FOLDER.mkdir()
-if not PLATFORM_INDEX_FOLDER.exists(): PLATFORM_INDEX_FOLDER.mkdir()
 
 if INDEX_FILE.exists():
     with open(INDEX_FILE, "r") as file:
@@ -398,7 +390,22 @@ def create_platform_zip(platform_folder: Path, zip_file_path: Path):
         _LOGGER.info(f"Succesfully packaged platform {name}")
     return
 
+def folder_setup():
+    if DEBUGGING and not INDEX_FOLDER.exists():
+        INDEX_FOLDER.mkdir()
+        _LOGGER.info(f"Created index folder {INDEX_FOLDER}")
+    
+    if not INTEGRATION_INDEX_FOLDER.exists(): 
+        INTEGRATION_INDEX_FOLDER.mkdir()
+        _LOGGER.info(f"Created integration folder {INTEGRATION_INDEX_FOLDER}")
+
+    if not PLATFORM_INDEX_FOLDER.exists():
+        PLATFORM_INDEX_FOLDER.mkdir()
+        _LOGGER.info(f"Created platform folder {PLATFORM_INDEX_FOLDER}")
+
 def main():
+    args = parse_arguments()
+
     streamhandler = logging.StreamHandler()
     streamhandler.setFormatter(ColorFormatter(LOGGER_FORMAT, LOGGER_DATE_FORMAT))
     logging.basicConfig(
@@ -406,8 +413,19 @@ def main():
         datefmt=LOGGER_DATE_FORMAT,
         style="$",
         handlers=[streamhandler])
-    _LOGGER.info("Setup Logging")
-    args = parse_arguments()
+
+    if DEBUGGING:
+        msg = "Indexer running in DEBUG mode"    
+        if args.dev:
+            msg = msg + "and DEV_MODE"
+    elif args.dev:
+        msg = "Indexer running in dev mode"
+    else:
+        msg = "Indexer running in main mode"
+    _LOGGER.info(msg)
+
+    folder_setup()
+
     updated_integration_index = create_integration_index(args.dev)
     updated_platform_index = create_platform_index(args.dev)
     index = {
