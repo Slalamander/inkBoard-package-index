@@ -4,7 +4,6 @@ Meant to be used with github workflows
 """
 from typing import Generator
 import os
-import re
 import json
 import logging
 from pathlib import Path
@@ -12,7 +11,6 @@ import shutil
 import tempfile
 import zipfile
 import argparse
-from contextlib import suppress
 
 from datetime import datetime as dt
 
@@ -436,10 +434,6 @@ def main():
 
         ##For these indexes, maybe consider adding more file info?
         ##Think timestamp, file size etc.
-        ##Also, maybe put both zips in their own folder, 
-        ##or make a folder for main/dev versions
-        ##For folder structure -> folder per integration/platform with main/dev
-        ##Then if required, older versions van also be kept in the repo i.e.
 
         ##Also, start raising errors when versions on the main branch are typed as a dev version (i.e. have 3 '.'s)
         ##Maybe don't let the entire workflow fail but make it show a warning/error?
@@ -448,12 +442,6 @@ def main():
         }
 
     print(index)
-
-    ##May actually put this in a different repo;
-    ##inkBoard-index or something
-    ##Which would hold all the zip files too
-    ##Would have to see if that is allowed per github rules but it seems so
-    ##If so, generated zip files should be compressed.
 
     with open(INDEX_FILE, "w") as file:
         json.dump(index,file,indent=4)
