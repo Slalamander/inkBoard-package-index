@@ -12,6 +12,7 @@ import tempfile
 import zipfile
 import argparse
 import sys
+import subprocess
 
 from datetime import datetime as dt
 
@@ -90,6 +91,13 @@ def gather_folders(base_folder) -> Generator[Path, None, None]:
     for p in Path(base_folder).iterdir():
         if p.is_dir() and not p.name.startswith("_"):
             yield p
+
+def add_and_push_commit(add_path : str, message : str):
+    """Pushes a commit
+    """
+
+    subprocess.run(["git", "add", add_path], check=True, stdout=subprocess.PIPE).stdout
+    subprocess.run(["git", "comment", "-m", message], check=True, stdout=subprocess.PIPE).stdout
 
 def create_integration_index(dev_mode: bool):
 
@@ -189,6 +197,7 @@ def create_integration_index(dev_mode: bool):
 
         if make_package:
             create_integration_zip(p, package_name)
+            add_and_push_commit(str(index_folder), f"Packaged {pack_type} {p.name} version {manifest_version}")
 
     if err_dict:
         d = {}
