@@ -425,6 +425,7 @@ def folder_setup():
         _LOGGER.info(f"Created platform folder {PLATFORM_INDEX_FOLDER}")
 
 def main():
+    exit_code = 0
     args = parse_arguments()
 
     streamhandler = logging.StreamHandler()
@@ -448,10 +449,16 @@ def main():
         msg = "Indexer running in main mode"
     _LOGGER.info(msg)
 
+
+    exit_code = 1
+    _LOGGER.warning(f"Testing exit codes. Exiting with code {exit_code}")
+    return exit_code
+
     folder_setup()
 
     updated_integration_index = create_integration_index(args.dev, args.commit)
     updated_platform_index = create_platform_index(args.dev, args.commit)
+    
     index = {
         "inkBoard": inkBoard.__version__,
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
@@ -476,7 +483,8 @@ def main():
     #[x] Probably do push/pull in here too instead of the workflow -> that way the exit code can be set without it causing issues, and hopefully it reflects in the workflow
     #[x] Implement the final commit/push code
     #[x] add argument for the running branch
-    #[ ] Set exit code according to output of packagers
+    #[ ] Set exit code according to output of packagers 
+    #[ ] Trigger workflows op pull-requests and releases (https://medium.com/hostspaceng/triggering-workflows-in-another-repository-with-github-actions-4f581f8e0ceb)
 
     if args.commit:
         add_and_push_commit(".", f"Updated {'dev' if args.dev else 'main'} index")
@@ -484,7 +492,7 @@ def main():
         subprocess.run(["git", "push", "origin", args.branch], check=True, stdout=subprocess.PIPE).stdout
 
 
-    return 0
+    return exit_code
 
 if __name__ == "__main__":
     
