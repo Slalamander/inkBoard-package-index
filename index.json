@@ -2,7 +2,7 @@
     "inkBoard": "0.3.2.dev1",
     "PythonScreenStackManager": "0.4.1.dev1",
     "inkBoarddesigner": "0.3.0.dev1",
-    "timestamp": "2025-07-08T15:43:44.059176",
+    "timestamp": "2025-07-08T15:58:02.162754",
     "platforms": {
         "desktop": {
             "main": "0.0.2",
@@ -16,7 +16,7 @@
     "integrations": {
         "api": {
             "main": "0.2.1",
-            "dev": "0.1.2"
+            "dev": "0.2.2"
         },
         "homeassistant_client": {
             "main": "0.2.2",
