@@ -47,6 +47,19 @@ ARCHIVE_FOLDER_STR = "versions"
 DEV_PATTERN = r"([0-9.]+)_dev.zip"
 MAIN_PATTERN = r"([0-9.]+).zip"
 
+class EXITCODES:
+    NONE = 0
+    "Nothing went wrong (exit code 0)"
+
+    INTEGRATIONINDEXERROR = 11
+    "Error creating the integration index"
+
+    PLATFORMINDEXERROR = 12
+    "Error creating the platform index"
+
+    BOTHINDEXERROR = 13
+    "Error creating both the integration and platform index"
+
 if INDEX_FILE.exists():
     with open(INDEX_FILE, "r") as file:
         current_index = json.load(file)
@@ -133,10 +146,11 @@ def create_integration_index(dev_mode: bool, commit_changes : bool):
         manifest_version = parse_version(d["version"])
         if p.name in integration_index:
             index_version = parse_version(integration_index[p.name].get(branch, "0.0.0"))
-            integration_index[p.name][branch] = d["version"]
+            
         else:
             index_version = parse_version("0.0.0")
-            integration_index[p.name] = {branch: d["version"]}
+            # integration_index[p.name] = {branch: d["version"]}
+            integration_index[p.name] = {}
 
         if index_version == manifest_version:
             ##Same version, means it does not have to be made. Only make for new versions
@@ -195,6 +209,7 @@ def create_integration_index(dev_mode: bool, commit_changes : bool):
             ##If branch == "main", the exists check is already performed and causes archive to be set to True.
             _LOGGER.info(f"Removing old {pack_type} package {old_package.name}")
             os.remove(old_package)
+            integration_index[p.name].pop(branch, None)
 
         if len(list(index_folder.glob("*.zip"))) > 1:
             ##Check to see if the current folder structure is ok to make a new package in
@@ -205,6 +220,7 @@ def create_integration_index(dev_mode: bool, commit_changes : bool):
 
         if make_package:
             create_integration_zip(p, package_name)
+            integration_index[p.name][branch] = d["version"]
             if commit_changes:
                 add_and_push_commit(str(index_folder), f"Packaged {pack_type} {p.name} version {manifest_version}")
 
@@ -242,10 +258,10 @@ def create_platform_index(dev_mode: bool, commit_changes : bool):
         platform_version = parse_version(d["version"])
         if p.name in platform_index:
             index_version = parse_version(platform_index[p.name].get(branch, "0.0.0"))
-            platform_index[p.name][branch] = d["version"]
+            
         else:
             index_version = parse_version("0.0.0")
-            platform_index[p.name] = {branch: d["version"]}
+            platform_index[p.name] = {}
 
         if index_version == platform_version:
             ##Same version, means it does not have to be made. Only make for new versions
@@ -304,6 +320,7 @@ def create_platform_index(dev_mode: bool, commit_changes : bool):
             ##If branch == "main", the exists check is already performed and causes archive to be set to True.
             _LOGGER.info(f"Removing old {pack_type} package {old_package.name}")
             os.remove(old_package)
+            platform_index[p.name].pop(branch,None)
 
         if len(list(index_folder.glob("*.zip"))) > 1:
             ##Check to see if the current folder structure is ok to make a new package in
@@ -314,6 +331,7 @@ def create_platform_index(dev_mode: bool, commit_changes : bool):
 
         if make_package:
             create_platform_zip(p, package_name)
+            platform_index[p.name][branch] = d["version"]
             if commit_changes:
                 add_and_push_commit(str(index_folder), f"Packaged {pack_type} {p.name} version {platform_version}")
 
@@ -449,16 +467,25 @@ def main():
         msg = "Indexer running in main mode"
     _LOGGER.info(msg)
 
-
-    exit_code = 1
-    _LOGGER.warning(f"Testing exit codes. Exiting with code {exit_code}")
-    return exit_code
-
     folder_setup()
 
-    updated_integration_index = create_integration_index(args.dev, args.commit)
-    updated_platform_index = create_platform_index(args.dev, args.commit)
+    try:
+        updated_integration_index = create_integration_index(args.dev, args.commit)
+    except inkBoardIndexingError:
+        updated_integration_index = integration_index
+        exit_code = EXITCODES.INTEGRATIONINDEXERROR
+
+    try:
+        updated_platform_index = create_platform_index(args.dev, args.commit)
+    except inkBoardIndexingError:
+        if exit_code is EXITCODES.NONE:
+            exit_code = EXITCODES.PLATFORMINDEXERROR
+        else:
+            exit_code = EXITCODES.BOTHINDEXERROR
+        updated_platform_index = platform_index
     
+    #[ ]: from the messages: want to know which platforms/integrations errored.
+    #[ ]: also: only update the version in the index after the package is made succesfully
     index = {
         "inkBoard": inkBoard.__version__,
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
@@ -491,7 +518,8 @@ def main():
         subprocess.run(["git", "fetch", "origin", args.branch], check=True, stdout=subprocess.PIPE).stdout
         subprocess.run(["git", "push", "origin", args.branch], check=True, stdout=subprocess.PIPE).stdout
 
-
+    ##Exiting with a different exit_code than 0 causes the workflow to fail
+    ##That is good. So, handle setting it to a value depending on what goes wrong.
     return exit_code
 
 if __name__ == "__main__":
