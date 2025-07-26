@@ -19,7 +19,7 @@ from datetime import datetime as dt
 import inkBoard
 from inkBoard.logging import ColorFormatter
 from inkBoard import constants
-from inkBoard.types import manifestjson, platformjson
+from inkBoard.types import manifestjson, platformjson, indexpackagedict
 from inkBoard.packaging.constants import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL
 from inkBoard.packaging.version import parse_version, write_version_filename
 
@@ -70,11 +70,11 @@ else:
         "inkBoarddesigner": inkBoarddesigner.__version__,
         "timestamp": dt.fromtimestamp(0).isoformat(),
         "platforms": {},
-        "integrations": {"api": {"main": "1.0.0"}},
+        "integrations": {},
         }
 
-integration_index = current_index["integrations"].copy()
-platform_index = current_index["platforms"].copy()
+integration_index : dict[str,dict[str, indexpackagedict]] = current_index["integrations"].copy()
+platform_index : dict[str,dict[str, indexpackagedict]] = current_index["platforms"].copy()
 
 class inkBoardIndexingError(Exception):
     "Base exception for errors in the indexing process"
@@ -150,7 +150,8 @@ def create_integration_index(dev_mode: bool, commit_changes : bool):
 
         manifest_version = parse_version(d["version"])
         if p.name in integration_index:
-            index_version = parse_version(integration_index[p.name].get(branch, "0.0.0"))
+            package_dict = integration_index[p.name].get(branch, {"version": "0.0.0"})
+            index_version = parse_version(package_dict["version"])
             
         else:
             index_version = parse_version("0.0.0")
@@ -224,8 +225,8 @@ def create_integration_index(dev_mode: bool, commit_changes : bool):
             continue
 
         if make_package:
-            create_integration_zip(p, package_name)
-            integration_index[p.name][branch] = d["version"]
+            integration_index[p.name][branch] = create_integration_zip(p, package_name)
+            integration_index[p.name][branch]["version"] = d["version"]
             if commit_changes:
                 add_and_push_commit(str(index_folder), f"Packaged {pack_type} {p.name} version {manifest_version}")
 
@@ -262,7 +263,8 @@ def create_platform_index(dev_mode: bool, commit_changes : bool):
 
         platform_version = parse_version(d["version"])
         if p.name in platform_index:
-            index_version = parse_version(platform_index[p.name].get(branch, "0.0.0"))
+            package_dict = platform_index[p.name].get(branch, {"version": "0.0.0"})
+            index_version = parse_version(package_dict["version"])
             
         else:
             index_version = parse_version("0.0.0")
@@ -335,8 +337,8 @@ def create_platform_index(dev_mode: bool, commit_changes : bool):
             continue
 
         if make_package:
-            create_platform_zip(p, package_name)
-            platform_index[p.name][branch] = d["version"]
+            platform_index[p.name][branch] = create_platform_zip(p, package_name)
+            platform_index[p.name][branch]["version"] = d["version"]
             if commit_changes:
                 add_and_push_commit(str(index_folder), f"Packaged {pack_type} {p.name} version {platform_version}")
 
@@ -408,7 +410,7 @@ def create_integration_zip(integration_folder: Path, zip_file_path: Path):
                     dir_path = os.path.join(foldername, dir)
                     zip_file.write(dir_path, os.path.relpath(dir_path, tempdir))
         _LOGGER.info(f"Succesfully packaged integration {name}")
-    return
+    return {}
 
 def create_platform_zip(platform_folder: Path, zip_file_path: Path):
     
@@ -432,7 +434,7 @@ def create_platform_zip(platform_folder: Path, zip_file_path: Path):
                     dir_path = os.path.join(foldername, dir)
                     zip_file.write(dir_path, os.path.relpath(dir_path, tempdir))
         _LOGGER.info(f"Succesfully packaged platform {name}")
-    return
+    return {}
 
 def folder_setup():
     if DEBUGGING and not INDEX_FOLDER.exists():
@@ -500,7 +502,7 @@ def main():
 
         ##For these indexes, maybe consider adding more file info?
         ##Think timestamp, file size etc. Can add these later. For now, make extensible by giving version a key
-        #[ ]: put versions in a seperate key
+        #[x]: put versions in a seperate key
 
         "platforms": updated_platform_index,
         "integrations": updated_integration_index
@@ -516,6 +518,7 @@ def main():
     #[x] Implement the final commit/push code
     #[x] add argument for the running branch
     #[x] Set exit code according to output of packagers -> somewhat done. Simply returning 1 on error and using logs
+    #[ ] Let the zipfile create functions return dicts with info
     #[ ] Trigger workflows op pull-requests and releases (https://medium.com/hostspaceng/triggering-workflows-in-another-repository-with-github-actions-4f581f8e0ceb)
 
     if args.commit:
@@ -533,7 +536,6 @@ def main():
         sep_bar = "="*c_size
         sep_bar_nl = sep_bar + "\n"
         print("\n" + sep_bar_nl)
-        # msg = msg + sep_bar + "\n"
         for pack_type, exces in exceptions.items():
             msg = msg + sep_bar_nl + pack_type.capitalize() + "\n" + sep_bar_nl
 
