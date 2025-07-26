@@ -78,6 +78,10 @@ platform_index = current_index["platforms"].copy()
 
 class inkBoardIndexingError(Exception):
     "Base exception for errors in the indexing process"
+    def __init__(self, *args, errors : dict = None):
+        super().__init__(*args)
+        if errors:
+            self._errors = errors
 
 class ArchivingError(inkBoardIndexingError):
     "Something went wrong in the archiving of an old package"
@@ -128,7 +132,8 @@ def create_integration_index(dev_mode: bool, commit_changes : bool):
     err_dict = {}
     for p in int_folders:
         manifest_file = p / "manifest.json"
-        if not manifest_file.exists():
+        if manifest_file.exists(): #not manifest_file.exists():
+
             msg = f"No manifest file for {pack_type} folder {p}"
             _LOGGER.error(msg)
             err_dict[p.name] = FileIndexError(msg)
@@ -230,7 +235,7 @@ def create_integration_index(dev_mode: bool, commit_changes : bool):
             d.setdefault(v, 0)
             d[v] += 1
         msg = f"Errors while creating {pack_type} index: {d}. See logs for more details"
-        raise inkBoardIndexingError(msg)
+        raise inkBoardIndexingError(msg, errors=err_dict)
     return integration_index
 
 def create_platform_index(dev_mode: bool, commit_changes : bool):
@@ -240,7 +245,8 @@ def create_platform_index(dev_mode: bool, commit_changes : bool):
     err_dict = {}
     for p in int_folders:
         platform_file = p / "platform.json"
-        if not platform_file.exists():
+        # if not platform_file.exists():
+        if platform_file.exists():
             msg = f"No platform file for {pack_type} folder {p}"
             _LOGGER.error(msg)
             err_dict[p.name] = FileIndexError(msg)
@@ -342,7 +348,7 @@ def create_platform_index(dev_mode: bool, commit_changes : bool):
             d.setdefault(v, 0)
             d[v] += 1
         msg = f"Errors while creating {pack_type} index: {d}. See logs for more details"
-        raise inkBoardIndexingError(msg)
+        raise inkBoardIndexingError(msg, errors=err_dict)
     return platform_index
 
 
@@ -443,7 +449,7 @@ def folder_setup():
         _LOGGER.info(f"Created platform folder {PLATFORM_INDEX_FOLDER}")
 
 def main():
-    exit_code = 0
+    exceptions : dict[str, inkBoardIndexingError] = {}
     args = parse_arguments()
 
     streamhandler = logging.StreamHandler()
@@ -471,21 +477,22 @@ def main():
 
     try:
         updated_integration_index = create_integration_index(args.dev, args.commit)
-    except inkBoardIndexingError:
+    except inkBoardIndexingError as exce:
         updated_integration_index = integration_index
         exit_code = EXITCODES.INTEGRATIONINDEXERROR
+        exceptions["integrations"] = exce
 
     try:
         updated_platform_index = create_platform_index(args.dev, args.commit)
-    except inkBoardIndexingError:
+    except inkBoardIndexingError as exce:
         if exit_code is EXITCODES.NONE:
             exit_code = EXITCODES.PLATFORMINDEXERROR
         else:
             exit_code = EXITCODES.BOTHINDEXERROR
         updated_platform_index = platform_index
+        exceptions["platforms"] = exce
     
-    #[ ]: from the messages: want to know which platforms/integrations errored.
-    #[ ]: also: only update the version in the index after the package is made succesfully
+    #[x]: from the messages: want to know which platforms/integrations errored.
     index = {
         "inkBoard": inkBoard.__version__,
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
@@ -493,34 +500,50 @@ def main():
         "timestamp": dt.now().isoformat(),
 
         ##For these indexes, maybe consider adding more file info?
-        ##Think timestamp, file size etc.
+        ##Think timestamp, file size etc. Can add these later. For now, make extensible by giving version a key
+        #[ ]: put versions in a seperate key
 
-        ##Also, start raising errors when versions on the main branch are typed as a dev version (i.e. have 3 '.'s)
-        ##Maybe don't let the entire workflow fail but make it show a warning/error?
         "platforms": updated_platform_index,
         "integrations": updated_integration_index
         }
 
-    print(index)
+    _LOGGER.debug(f"New index is: {index}")
 
     with open(INDEX_FILE, "w") as file:
         json.dump(index,file,indent=4)
-    print(f"Index dumped to {INDEX_FILE}")
+    _LOGGER.info(f"Index dumped to {INDEX_FILE}")
 
     #[x] Probably do push/pull in here too instead of the workflow -> that way the exit code can be set without it causing issues, and hopefully it reflects in the workflow
     #[x] Implement the final commit/push code
     #[x] add argument for the running branch
-    #[ ] Set exit code according to output of packagers 
+    #[x] Set exit code according to output of packagers -> somewhat done. Simply returning 1 on error and using logs
     #[ ] Trigger workflows op pull-requests and releases (https://medium.com/hostspaceng/triggering-workflows-in-another-repository-with-github-actions-4f581f8e0ceb)
 
     if args.commit:
         add_and_push_commit(".", f"Updated {'dev' if args.dev else 'main'} index")
+        _LOGGER.info("Fetching repo and pushing changes")
         subprocess.run(["git", "fetch", "origin", args.branch], check=True, stdout=subprocess.PIPE).stdout
         subprocess.run(["git", "push", "origin", args.branch], check=True, stdout=subprocess.PIPE).stdout
 
-    ##Exiting with a different exit_code than 0 causes the workflow to fail
-    ##That is good. So, handle setting it to a value depending on what goes wrong.
-    return exit_code
+    if not exceptions:
+        _LOGGER.info("Indexer ran succesfully")
+        return 0
+    else:
+        msg = "INDEXER FAILED\nThe following errors were collected:\n\n"
+        c_size = min(80,shutil.get_terminal_size().columns)
+        sep_bar = "="*c_size
+        sep_bar_nl = sep_bar + "\n"
+        print("\n" + sep_bar_nl)
+        # msg = msg + sep_bar + "\n"
+        for pack_type, exces in exceptions.items():
+            msg = msg + sep_bar_nl + pack_type.capitalize() + "\n" + sep_bar_nl
+
+            for package, exce in exces._errors.items():
+                exce : Exception
+                msg = msg + f"- {package}: {type(exce).__name__}\n    " + f"{exce}\n\n"
+
+        _LOGGER.critical(msg)
+        return 1
 
 if __name__ == "__main__":
     
