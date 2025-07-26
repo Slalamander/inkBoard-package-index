@@ -132,7 +132,7 @@ def create_integration_index(dev_mode: bool, commit_changes : bool):
     err_dict = {}
     for p in int_folders:
         manifest_file = p / "manifest.json"
-        if manifest_file.exists(): #not manifest_file.exists():
+        if not manifest_file.exists():
 
             msg = f"No manifest file for {pack_type} folder {p}"
             _LOGGER.error(msg)
@@ -245,8 +245,7 @@ def create_platform_index(dev_mode: bool, commit_changes : bool):
     err_dict = {}
     for p in int_folders:
         platform_file = p / "platform.json"
-        # if not platform_file.exists():
-        if platform_file.exists():
+        if not platform_file.exists():
             msg = f"No platform file for {pack_type} folder {p}"
             _LOGGER.error(msg)
             err_dict[p.name] = FileIndexError(msg)
