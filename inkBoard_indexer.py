@@ -19,7 +19,7 @@ from datetime import datetime as dt
 import inkBoard
 from inkBoard.logging import ColorFormatter
 from inkBoard import constants
-from inkBoard.types import manifestjson, platformjson, indexpackagedict
+from inkBoard.packaging.types import PackageIndex, manifestjson, platformjson, indexpackagedict
 from inkBoard.packaging.constants import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL
 from inkBoard.packaging.version import parse_version, write_version_filename
 
@@ -62,9 +62,9 @@ class EXITCODES:
 
 if INDEX_FILE.exists():
     with open(INDEX_FILE, "r") as file:
-        current_index = json.load(file)
+        current_index : PackageIndex = json.load(file)
 else:
-    current_index = {
+    current_index : PackageIndex = {
         "inkBoard": inkBoard.__version__,
         "PythonScreenStackManager": PythonScreenStackManager.__version__,
         "inkBoarddesigner": inkBoarddesigner.__version__,
