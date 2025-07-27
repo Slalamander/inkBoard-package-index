@@ -17,7 +17,7 @@ import subprocess
 from datetime import datetime as dt
 
 import inkBoard
-from inkBoard.logging import ColorFormatter
+from inkBoard.logging import ColorFormatter, LOG_LEVELS
 from inkBoard import constants
 from inkBoard.packaging.types import PackageIndex, manifestjson, platformjson, indexpackagedict
 from inkBoard.packaging.constants import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL
@@ -46,6 +46,9 @@ ARCHIVE_FOLDER_STR = "versions"
 
 DEV_PATTERN = r"([0-9.]+)_dev.zip"
 MAIN_PATTERN = r"([0-9.]+).zip"
+
+LOG_LEVELS = list(LOG_LEVELS)
+LOG_LEVELS.remove("VERBOSE")
 
 class EXITCODES:
     NONE = 0
@@ -105,6 +108,8 @@ def parse_arguments():
                     default=False)
     parser.add_argument('--branch', dest="branch",
                         help="The branch to push the changes to. Ignored if --commit is not passed", default=None)
+    parser.add_argument('--logs', dest="log_level", choices=LOG_LEVELS,
+                        help="The logging level to use", default="CRITICAL")
     return parser.parse_args()
 
 def gather_folders(base_folder) -> Generator[Path, None, None]:
@@ -455,6 +460,7 @@ def main():
 
     streamhandler = logging.StreamHandler()
     streamhandler.setFormatter(ColorFormatter(LOGGER_FORMAT, LOGGER_DATE_FORMAT))
+    streamhandler.setLevel(args.log_level)
     logging.basicConfig(
         format=LOGGER_FORMAT,
         datefmt=LOGGER_DATE_FORMAT,
