@@ -1,0 +1,48 @@
+{
+    "inkBoard": {
+        "dev": "0.3.2.dev1"
+    },
+    "PythonScreenStackManager": {
+        "dev": "0.4.1.dev1"
+    },
+    "inkBoarddesigner": {
+        "dev": "0.3.0.dev1"
+    },
+    "timestamp": {
+        "dev": "2025-07-30T18:35:41.301410"
+    },
+    "platforms": {
+        "desktop": {
+            "dev": {
+                "version": "0.0.3.dev1"
+            }
+        },
+        "kobo": {
+            "dev": {
+                "version": "0.2.2"
+            }
+        }
+    },
+    "integrations": {
+        "system_tray": {
+            "dev": {
+                "version": "0.1.1.dev2"
+            }
+        },
+        "meteocons": {
+            "dev": {
+                "version": "0.1.0"
+            }
+        },
+        "api": {
+            "dev": {
+                "version": "0.2.2"
+            }
+        },
+        "homeassistant_client": {
+            "dev": {
+                "version": "0.2.3.dev2"
+            }
+        }
+    }
+}
