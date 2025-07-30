@@ -2,7 +2,7 @@
 
 Meant to be used with github workflows
 """
-from typing import Generator
+from typing import Generator, get_args
 import os
 import json
 import logging
@@ -19,9 +19,16 @@ from datetime import datetime as dt
 import inkBoard
 from inkBoard.logging import ColorFormatter, LOG_LEVELS
 from inkBoard import constants
-from inkBoard.packaging.types import PackageIndex, manifestjson, platformjson, indexpackagedict
 from inkBoard.packaging.constants import ZIP_COMPRESSION, ZIP_COMPRESSION_LEVEL
 from inkBoard.packaging.version import parse_version, write_version_filename
+
+from inkBoard.packaging.types import (
+    PackageIndex,
+    manifestjson,
+    platformjson,
+    indexpackagedict, 
+    branchtypes,
+    )
 
 import inkBoarddesigner
 import PythonScreenStackManager
@@ -68,10 +75,10 @@ if INDEX_FILE.exists():
         current_index : PackageIndex = json.load(file)
 else:
     current_index : PackageIndex = {
-        "inkBoard": inkBoard.__version__,
-        "PythonScreenStackManager": PythonScreenStackManager.__version__,
-        "inkBoarddesigner": inkBoarddesigner.__version__,
-        "timestamp": dt.fromtimestamp(0).isoformat(),
+        "inkBoard": {}, #inkBoard.__version__,
+        "PythonScreenStackManager": {}, #PythonScreenStackManager.__version__,
+        "inkBoarddesigner": {}, #inkBoarddesigner.__version__,
+        "timestamp": {}, #dt.fromtimestamp(0).isoformat(),
         "platforms": {},
         "integrations": {},
         }
@@ -106,7 +113,7 @@ def parse_arguments():
     parser.add_argument('--commit', action='store_true', dest='commit',
                     help="Commit changes while running the script",
                     default=False)
-    parser.add_argument('--branch', dest="branch",
+    parser.add_argument('--branch', dest="branch", choices=get_args(branchtypes),
                         help="The branch to push the changes to. Ignored if --commit is not passed", default=None)
     parser.add_argument('--logs', dest="log_level", choices=LOG_LEVELS,
                         help="The logging level to use", default="CRITICAL")
@@ -123,8 +130,6 @@ def add_and_push_commit(add_path : str, message : str):
     """Pushes a commit
     """
 
-    ##Current exit status is 128. This appears to have to do with the config/account management
-    ##I.e. Seems like the git config is not saved between steps?
     _LOGGER.info(f"Pushing a commit {add_path}: {message}")
     subprocess.run(["git", "add", INDEX_FOLDER], check=True, stdout=subprocess.PIPE).stdout
     subprocess.run(["git", "commit", "-m", message], check=True, stdout=subprocess.PIPE).stdout
@@ -474,10 +479,13 @@ def main():
         msg = "Indexer running in DEBUG mode"    
         if args.dev:
             msg = msg + "and DEV_MODE"
+        branch_str = "DEBUG"
     elif args.dev:
         msg = "Indexer running in dev mode"
+        branch_str = "dev"
     else:
         msg = "Indexer running in main mode"
+        branch_str = "main"
     _LOGGER.info(msg)
 
     folder_setup()
@@ -501,10 +509,10 @@ def main():
     
     #[x]: from the messages: want to know which platforms/integrations errored.
     index = {
-        "inkBoard": inkBoard.__version__,
-        "PythonScreenStackManager": PythonScreenStackManager.__version__,
-        "inkBoarddesigner": inkBoarddesigner.__version__,
-        "timestamp": dt.now().isoformat(),
+        "inkBoard": {branch_str: inkBoard.__version__},
+        "PythonScreenStackManager": {branch_str: PythonScreenStackManager.__version__},
+        "inkBoarddesigner": {branch_str: inkBoarddesigner.__version__},
+        "timestamp": {branch_str: dt.now().isoformat()},
 
         ##For these indexes, maybe consider adding more file info?
         ##Think timestamp, file size etc. Can add these later. For now, make extensible by giving version a key
@@ -525,6 +533,7 @@ def main():
     #[x] add argument for the running branch
     #[x] Set exit code according to output of packagers -> somewhat done. Simply returning 1 on error and using logs
     #[ ] Let the zipfile create functions return dicts with info
+    #[ ] Add a check to ensure every integration/platform has a unique name (i.e. no platform and integration may have the same name)
     #[ ] Trigger workflows op pull-requests and releases (https://medium.com/hostspaceng/triggering-workflows-in-another-repository-with-github-actions-4f581f8e0ceb)
 
     if args.commit:
