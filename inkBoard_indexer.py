@@ -116,7 +116,7 @@ def parse_arguments():
     parser.add_argument('--branch', dest="branch", choices=get_args(branchtypes),
                         help="The branch to push the changes to. Ignored if --commit is not passed", default=None)
     parser.add_argument('--logs', dest="log_level", choices=LOG_LEVELS,
-                        help="The logging level to use", default="CRITICAL")
+                        help="The logging level to use", default="INFO")
     return parser.parse_args()
 
 def gather_folders(base_folder) -> Generator[Path, None, None]:
