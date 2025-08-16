@@ -532,9 +532,11 @@ def main():
     #[x] Implement the final commit/push code
     #[x] add argument for the running branch
     #[x] Set exit code according to output of packagers -> somewhat done. Simply returning 1 on error and using logs
-    #[ ] Let the zipfile create functions return dicts with info
-    #[ ] Add a check to ensure every integration/platform has a unique name (i.e. no platform and integration may have the same name)
+    #[ ] Let the zipfile create functions return dicts with info -> mainly interested in required versions of inkBoard and PSSM (probably add designer there too) and possibly python version
+    #[ ] Add a check to ensure every integration/platform has a unique name (i.e. no platform and integration may have the same name) -> basically, add a test/check function
     #[ ] Trigger workflows op pull-requests and releases (https://medium.com/hostspaceng/triggering-workflows-in-another-repository-with-github-actions-4f581f8e0ceb)
+    #[ ] Check if the latest ttkbootstrap release works with the designer on 3.9
+    #[ ] If somehow possible, it would be nice to have a simple api on github or something that is able to handle requests, such that requesting certain data can be done without needing to download a full json file i.e.
 
     if args.commit:
         add_and_push_commit(".", f"Updated {'dev' if args.dev else 'main'} index")
